@@ -7,8 +7,10 @@ export const DEFAULT_APPS_SCRIPT_URL_KEY = "qr_studio_apps_script_url";
 export const DEFAULT_LOCAL_STORAGE_KEY = "qr_studio_records_v1";
 export const THEME_KEY = "qr_studio_theme";
 
-// Default Web App URL fallback (reads from Vercel env variable VITE_APPS_SCRIPT_URL if set)
-export const DEFAULT_FALLBACK_APPS_SCRIPT_URL = (import.meta as any).env?.VITE_APPS_SCRIPT_URL || "";
+// Deployed Google Apps Script Web App URL by Arasukirubanandhan
+export const DEFAULT_FALLBACK_APPS_SCRIPT_URL = 
+  (import.meta as any).env?.VITE_APPS_SCRIPT_URL || 
+  "https://script.google.com/macros/s/AKfycbzmn7OQz1xnXXByB2f9o4oXq4qPrtBJyrSF4eZ4I0vn8H0_RfRl3nSHZnVpvWGRcIYArQ/exec";
 
 // Default configuration for QR customization
 export const DEFAULT_QR_CUSTOMIZATION: QRCustomization = {
@@ -148,7 +150,7 @@ export const MOCK_QR_RECORDS: QRCodeRecord[] = [
     contentType: 'url',
     staticContent: '',
     destinationUrl: 'https://qrstudio.app',
-    shortRedirectUrl: 'https://script.google.com/macros/s/DEMO_ID/exec?action=redirect&id=qr_demo_001',
+    shortRedirectUrl: 'https://script.google.com/macros/s/AKfycbzmn7OQz1xnXXByB2f9o4oXq4qPrtBJyrSF4eZ4I0vn8H0_RfRl3nSHZnVpvWGRcIYArQ/exec?action=redirect&id=qr_demo_001',
     status: 'active',
     createdAt: '2026-07-20T10:00:00Z',
     updatedAt: '2026-07-26T14:30:00Z',
@@ -197,7 +199,7 @@ export const MOCK_QR_RECORDS: QRCodeRecord[] = [
     contentType: 'file_link',
     staticContent: '',
     destinationUrl: 'https://example.com/summer-menu.pdf',
-    shortRedirectUrl: 'https://script.google.com/macros/s/DEMO_ID/exec?action=redirect&id=qr_demo_003',
+    shortRedirectUrl: 'https://script.google.com/macros/s/AKfycbzmn7OQz1xnXXByB2f9o4oXq4qPrtBJyrSF4eZ4I0vn8H0_RfRl3nSHZnVpvWGRcIYArQ/exec?action=redirect&id=qr_demo_003',
     status: 'active',
     createdAt: '2026-07-24T09:30:00Z',
     updatedAt: '2026-07-25T16:00:00Z',
