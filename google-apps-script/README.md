@@ -1,12 +1,12 @@
-# Google Apps Script Setup for QR Studio
+# Streamlined Google Apps Script Setup for QR Studio
 
 **Designed by Arasukirubanandhan**
 
-QR Studio uses a Google Apps Script Web App backed by Google Sheets to store QR codes, manage dynamic redirects, and record real-time analytics.
+This simplified Google Apps Script Web App stores all QR codes, destination URLs, and total scan counters in **1 single sheet (`QRCodes`)**. It does NOT log user agents, IPs, or detailed visitor logs, ensuring maximum speed and privacy.
 
 ---
 
-## ⚡ Automated 1-Click Setup Instructions
+## ⚡ 1-Sheet Setup Instructions
 
 ### Step 1: Create a Google Sheet
 1. Open Google Drive and create a new Google Spreadsheet.
@@ -19,50 +19,23 @@ QR Studio uses a Google Apps Script Web App backed by Google Sheets to store QR 
 4. Click the 💾 **Save** icon (or press Ctrl+S / Cmd+S).
 
 ### Step 3: Run Auto-Setup
-You have 2 easy ways to generate all sheets and columns automatically:
+- Click **"QR Studio > ⚙️ Setup QRCodes Sheet"** in your Google Sheet menu, OR select `setupDatabase` in the toolbar and click **Run**.
 
-- **Option A (From Apps Script Editor)**:
-  Select `setupDatabase` in the top function dropdown and click **Run**.
-
-- **Option B (From Google Sheets Menu)**:
-  Refresh your Google Sheet tab, click the custom menu item **QR Studio** > **⚙️ Auto-Setup Database Sheets**.
-
-> 🪄 This automatically creates the **`QRCodes`**, **`ScanLogs`**, and **`Settings`** sheets with all required columns, dark header formatting, and frozen top rows!
+> 🪄 This automatically creates the **`QRCodes`** sheet with all required columns and header styling!
 
 ---
 
 ### Step 4: Deploy as Web App
-1. Click the **Deploy** button at the top right > **New deployment**.
-2. Click the gear icon ⚙️ next to "Select type" and select **Web app**.
-3. Fill in details:
-   - **Description**: `QR Studio API v1`
-   - **Execute as**: `Me` (your Google Account)
-   - **Who has access**: `Anyone` (Crucial so dynamic QR scans and frontend requests work without login prompts).
-4. Click **Deploy**.
-5. Grant permissions if prompted by Google (click *Advanced* > *Go to QR Studio Script (unsafe)* > *Allow*).
-6. Copy the **Web App URL** (looks like `https://script.google.com/macros/s/AKfycb.../exec`).
+1. Click **Deploy > New deployment > Web app**.
+2. Settings:
+   - **Description**: `QR Studio Streamlined API v1`
+   - **Execute as**: `Me`
+   - **Who has access**: `Anyone`
+3. Click **Deploy** and copy the **Web App URL**.
+4. Paste the Web App URL into QR Studio Settings!
 
 ---
 
-### Step 5: Connect to QR Studio Frontend
-1. Open your QR Studio Web App.
-2. Click **Settings** in the header navigation or bottom footer.
-3. Paste your Web App URL into the **Google Apps Script Web App URL** input field.
-4. Click **Save & Connect**.
-5. You're ready! All newly generated dynamic QR codes and analytics will sync directly with your Google Sheet.
+## 📋 QRCodes Sheet Column Structure
 
----
-
-## 📋 Generated Database Schema Overview
-
-### Sheet 1: `QRCodes`
-Columns automatically created:
-`id`, `qrName`, `qrType`, `contentType`, `staticContent`, `destinationUrl`, `shortRedirectUrl`, `status`, `createdAt`, `updatedAt`, `expiresAt`, `scanLimit`, `passwordHash`, `campaign`, `tags`, `customizationJson`, `totalScans`, `lastScanAt`, `createdBy`
-
-### Sheet 2: `ScanLogs`
-Columns automatically created:
-`scanId`, `qrId`, `timestamp`, `visitorId`, `userAgent`, `deviceType`, `browser`, `operatingSystem`, `referrer`, `language`, `country`, `ipHash`, `redirectUrl`
-
-### Sheet 3: `Settings`
-Columns automatically created:
-`key`, `value`
+`id` | `qrName` | `qrType` | `contentType` | `staticContent` | `destinationUrl` | `shortRedirectUrl` | `status` | `createdAt` | `updatedAt` | `expiresAt` | `scanLimit` | `passwordHash` | `campaign` | `tags` | `customizationJson` | `totalScans` | `lastScanAt` | `createdBy`

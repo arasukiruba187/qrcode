@@ -1,27 +1,24 @@
 /**
  * ==============================================================================
- * QR STUDIO - Google Apps Script Web App Backend & REST API
+ * QR STUDIO - Streamlined Google Apps Script Web App Backend
  * Designed by Arasukirubanandhan
  * ==============================================================================
  * 
- * 🚀 ONE-CLICK AUTO SETUP INSTRUCTIONS:
- * -------------------------------------
- * 1. Create a new Google Sheet named "QR Studio Database".
- * 2. Click Extensions > Apps Script in the Google Sheets top menu.
- * 3. Delete any default code in Code.gs and paste this ENTIRE file.
- * 4. Run the function `setupDatabase` once from the top toolbar, OR open the 
- *    Google Sheet and click "QR Studio > ⚙️ Auto-Setup Database Sheets".
- *    (All sheets and columns will be created automatically!)
- * 5. Click Deploy > New deployment.
- * 6. Select type "Web app":
- *    - Description: "QR Studio API v1"
- *    - Execute as: "Me"
- *    - Who has access: "Anyone" (Required for public QR scanning & API)
- * 7. Copy the deployed Web App URL and paste it into QR Studio Settings!
+ * 🚀 SIMPLIFIED SINGLE-SHEET ARCHITECTURE:
+ * ----------------------------------------
+ * - Stores QR records & destination URLs in 1 sheet: `QRCodes`
+ * - NO detailed scan logging (no user-agent, IP, or visitor tracking).
+ * - Instant redirection with scan count increment.
+ * 
+ * SETUP INSTRUCTIONS:
+ * 1. Open your Google Sheet.
+ * 2. Click Extensions > Apps Script.
+ * 3. Replace all code with this script.
+ * 4. Run `setupDatabase` once or click "QR Studio > ⚙️ Setup QRCodes Sheet".
+ * 5. Click Deploy > New deployment > Web App (Execute as: Me, Access: Anyone).
  * ==============================================================================
  */
 
-// Global Config
 var SPREADSHEET_ID = ""; // Leave blank if script is bound to Google Sheet
 
 /**
@@ -35,7 +32,6 @@ function getDb() {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
   
-  // Auto-init sheets if QRCodes missing
   if (ss && !ss.getSheetByName("QRCodes")) {
     setupDatabase(ss);
   }
@@ -43,53 +39,37 @@ function getDb() {
 }
 
 /**
- * AUTOMATIC DATABASE INITIALIZATION
- * Creates all required sheets, sets column headers, and formats header rows.
+ * AUTOMATIC SINGLE-SHEET INITIALIZATION
+ * Creates `QRCodes` sheet with exact columns and header formatting.
  */
 function setupDatabase(targetSs) {
   var ss = targetSs || (SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet());
   if (!ss) return "Error: Could not access Google Sheet.";
 
-  var schemas = {
-    "QRCodes": [
-      "id", "qrName", "qrType", "contentType", "staticContent", 
-      "destinationUrl", "shortRedirectUrl", "status", "createdAt", 
-      "updatedAt", "expiresAt", "scanLimit", "passwordHash", 
-      "campaign", "tags", "customizationJson", "totalScans", "lastScanAt", "createdBy"
-    ],
-    "ScanLogs": [
-      "scanId", "qrId", "timestamp", "visitorId", "userAgent", 
-      "deviceType", "browser", "operatingSystem", "referrer", 
-      "language", "country", "ipHash", "redirectUrl"
-    ],
-    "Settings": [
-      "key", "value"
-    ]
-  };
+  var headers = [
+    "id", "qrName", "qrType", "contentType", "staticContent", 
+    "destinationUrl", "shortRedirectUrl", "status", "createdAt", 
+    "updatedAt", "expiresAt", "scanLimit", "passwordHash", 
+    "campaign", "tags", "customizationJson", "totalScans", "lastScanAt", "createdBy"
+  ];
 
-  for (var sheetName in schemas) {
-    var sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-    }
-    
-    // Check if headers exist
-    var headers = schemas[sheetName];
-    var lastRow = sheet.getLastRow();
-    
-    if (lastRow === 0) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      
-      // Professional header formatting
-      var headerRange = sheet.getRange(1, 1, 1, headers.length);
-      headerRange.setFontWeight("bold");
-      headerRange.setBackground("#0B0F19");
-      headerRange.setFontColor("#60A5FA");
-      sheet.setFrozenRows(1);
-    }
+  var sheet = ss.getSheetByName("QRCodes");
+  if (!sheet) {
+    sheet = ss.insertSheet("QRCodes");
   }
 
-  // Safely delete empty default "Sheet1" if other sheets exist
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Header formatting
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setFontWeight("bold");
+    headerRange.setBackground("#0B0F19");
+    headerRange.setFontColor("#60A5FA");
+    sheet.setFrozenRows(1);
+  }
+
+  // Delete empty default "Sheet1" if QRCodes exists
   var defaultSheet = ss.getSheetByName("Sheet1");
   if (defaultSheet && ss.getSheets().length > 1 && defaultSheet.getLastRow() === 0) {
     try {
@@ -97,8 +77,7 @@ function setupDatabase(targetSs) {
     } catch (e) {}
   }
 
-  Logger.log("Database initialized successfully! Created QRCodes, ScanLogs, and Settings sheets.");
-  return "Database initialized successfully! All sheets and columns created.";
+  return "QRCodes sheet setup successfully!";
 }
 
 /**
@@ -108,11 +87,9 @@ function onOpen() {
   try {
     var ui = SpreadsheetApp.getUi();
     ui.createMenu('QR Studio')
-      .addItem('⚙️ Auto-Setup Database Sheets', 'setupDatabase')
+      .addItem('⚙️ Setup QRCodes Sheet', 'setupDatabase')
       .addToUi();
-  } catch (e) {
-    // Ignore if running outside Sheets UI container
-  }
+  } catch (e) {}
 }
 
 /**
@@ -122,10 +99,9 @@ function doGet(e) {
   var params = e ? e.parameter : {};
   var action = params.action || "";
 
-  // Auto setup check
   getDb();
 
-  // 1. Dynamic QR Redirect endpoint
+  // 1. Instant Dynamic QR Redirect
   if (action === "redirect") {
     return handleRedirect(e);
   }
@@ -133,7 +109,7 @@ function doGet(e) {
   // 2. REST API GET endpoints
   switch (action) {
     case "health":
-      return jsonResponse({ status: "ok", timestamp: new Date().toISOString(), app: "QR Studio Backend", designer: "Arasukirubanandhan" });
+      return jsonResponse({ status: "ok", timestamp: new Date().toISOString(), app: "QR Studio", designer: "Arasukirubanandhan" });
     case "setup":
       var setupMsg = setupDatabase();
       return jsonResponse({ status: "success", message: setupMsg });
@@ -143,8 +119,6 @@ function doGet(e) {
       return handleGetQR(params);
     case "getAnalytics":
       return handleGetAnalytics(params);
-    case "exportAnalytics":
-      return handleExportAnalytics(params);
     default:
       return jsonResponse({ status: "error", message: "Invalid or missing action parameter." }, 400);
   }
@@ -162,7 +136,7 @@ function doPost(e) {
   }
 
   try {
-    getDb(); // Ensure database tables exist
+    getDb();
 
     var payload = {};
     if (e && e.postData && e.postData.contents) {
@@ -186,8 +160,6 @@ function doPost(e) {
         return handleDeleteQR(payload);
       case "duplicateQR":
         return handleDuplicateQR(payload);
-      case "logScan":
-        return handleLogScan(payload);
       case "setup":
         var setupMsg = setupDatabase();
         return jsonResponse({ status: "success", message: setupMsg });
@@ -211,10 +183,10 @@ function jsonResponse(data, statusCode) {
 }
 
 /**
- * Helper: Read Sheet Records as Objects
+ * Helper: Read QRCodes Records
  */
 function getSheetRecords(sheetName) {
-  var sheet = getDb().getSheetByName(sheetName);
+  var sheet = getDb().getSheetByName(sheetName || "QRCodes");
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
@@ -432,7 +404,7 @@ function handleDuplicateQR(payload) {
 }
 
 /**
- * ACTION: handleRedirect (Dynamic Scanning)
+ * ACTION: handleRedirect (Fast Dynamic Redirect - NO DETAILED LOGGING)
  */
 function handleRedirect(e) {
   var params = e.parameter;
@@ -446,6 +418,10 @@ function handleRedirect(e) {
   var rowIndex = -1;
 
   var sheet = getDb().getSheetByName("QRCodes");
+  if (!sheet) {
+    return HtmlService.createHtmlOutput("<h3>QRCodes sheet not found.</h3>");
+  }
+
   var data = sheet.getDataRange().getValues();
 
   for (var i = 1; i < data.length; i++) {
@@ -460,7 +436,6 @@ function handleRedirect(e) {
         status: data[i][7],
         expiresAt: data[i][10],
         scanLimit: Number(data[i][11] || 0),
-        passwordHash: data[i][12],
         totalScans: Number(data[i][16] || 0)
       };
       break;
@@ -471,12 +446,10 @@ function handleRedirect(e) {
     return HtmlService.createHtmlOutput("<h3>QR Code Not Found</h3><p>This QR code does not exist or was removed.</p>");
   }
 
-  // Check Status
   if (targetQR.status === "paused") {
     return HtmlService.createHtmlOutput("<h3>QR Code Paused</h3><p>This campaign is currently paused by its owner.</p>");
   }
 
-  // Check Expiry
   if (targetQR.expiresAt) {
     var expDate = new Date(targetQR.expiresAt);
     if (!isNaN(expDate.getTime()) && expDate < new Date()) {
@@ -484,7 +457,6 @@ function handleRedirect(e) {
     }
   }
 
-  // Check Scan Limit
   if (targetQR.scanLimit > 0 && targetQR.totalScans >= targetQR.scanLimit) {
     return HtmlService.createHtmlOutput("<h3>Scan Limit Reached</h3><p>This QR code has reached its maximum scan limit of " + targetQR.scanLimit + " scans.</p>");
   }
@@ -494,41 +466,16 @@ function handleRedirect(e) {
     finalDestination = "https://" + finalDestination;
   }
 
-  // Log Scan
-  var scanId = "scan_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 6);
   var now = new Date().toISOString();
 
-  var userAgent = e.parameter.ua || "";
-  var visitorId = e.parameter.vid || ("v_" + Math.random().toString(36).substring(2, 10));
-  var ref = e.parameter.ref || "";
-
-  var scanSheet = getDb().getSheetByName("ScanLogs");
-  if (scanSheet) {
-    scanSheet.appendRow([
-      scanId,
-      qrId,
-      now,
-      visitorId,
-      userAgent,
-      parseDevice(userAgent),
-      parseBrowser(userAgent),
-      parseOS(userAgent),
-      ref,
-      e.parameter.lang || "en",
-      "Unknown",
-      "",
-      finalDestination
-    ]);
-  }
-
-  // Increment totalScans and update lastScanAt
+  // Increment totalScans and update lastScanAt in QRCodes sheet (NO scanLogs sheet)
   if (rowIndex !== -1) {
     var updatedScans = targetQR.totalScans + 1;
-    sheet.getRange(rowIndex, 17).setValue(updatedScans);
-    sheet.getRange(rowIndex, 18).setValue(now);
+    sheet.getRange(rowIndex, 17).setValue(updatedScans); // Column 17: totalScans
+    sheet.getRange(rowIndex, 18).setValue(now);          // Column 18: lastScanAt
   }
 
-  // Perform Redirect HTML
+  // Fast Instant Redirect HTML
   var html = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
     '<meta http-equiv="refresh" content="0;url=' + encodeURI(finalDestination) + '">' +
@@ -543,88 +490,30 @@ function handleRedirect(e) {
 }
 
 /**
- * ACTION: getAnalytics
+ * ACTION: getAnalytics (Simplified)
  */
 function handleGetAnalytics(params) {
   var qrId = params.id;
-  var logs = getSheetRecords("ScanLogs");
-
+  var records = getSheetRecords("QRCodes");
+  var target = null;
+  
   if (qrId) {
-    logs = logs.filter(function(log) {
-      return String(log.qrId) === String(qrId);
-    });
+    records = records.filter(function(r) { return String(r.id) === String(qrId); });
   }
 
-  var totalScans = logs.length;
-  var uniqueVisitorMap = {};
-  var scansByDate = {};
-  var deviceMap = {};
-  var browserMap = {};
-  var osMap = {};
-
-  logs.forEach(function(log) {
-    if (log.visitorId) uniqueVisitorMap[log.visitorId] = true;
-
-    var dateStr = (log.timestamp || "").substring(0, 10) || "Unknown";
-    scansByDate[dateStr] = (scansByDate[dateStr] || 0) + 1;
-
-    var dev = log.deviceType || "Desktop";
-    deviceMap[dev] = (deviceMap[dev] || 0) + 1;
-
-    var br = log.browser || "Other";
-    browserMap[br] = (browserMap[br] || 0) + 1;
-
-    var os = log.operatingSystem || "Other";
-    osMap[os] = (osMap[os] || 0) + 1;
-  });
+  var totalScans = records.reduce(function(acc, r) { return acc + Number(r.totalScans || 0); }, 0);
 
   return jsonResponse({
     status: "success",
     data: {
       qrId: qrId || "all",
       totalScans: totalScans,
-      uniqueVisitors: Object.keys(uniqueVisitorMap).length,
-      scansByDate: scansByDate,
-      devices: deviceMap,
-      browsers: browserMap,
-      operatingSystems: osMap,
-      recentLogs: logs.slice(-50).reverse()
+      uniqueVisitors: totalScans,
+      scansByDate: {},
+      devices: {},
+      browsers: {},
+      operatingSystems: {},
+      recentLogs: []
     }
   });
-}
-
-/**
- * ACTION: exportAnalytics
- */
-function handleExportAnalytics(params) {
-  return handleGetAnalytics(params);
-}
-
-/**
- * Helper parsers
- */
-function parseDevice(ua) {
-  if (!ua) return "Mobile";
-  if (/mobile/i.test(ua)) return "Mobile";
-  if (/tablet|ipad/i.test(ua)) return "Tablet";
-  return "Desktop";
-}
-
-function parseBrowser(ua) {
-  if (!ua) return "Chrome";
-  if (/chrome|crios/i.test(ua)) return "Chrome";
-  if (/safari/i.test(ua) && !/chrome/i.test(ua)) return "Safari";
-  if (/firefox|fxios/i.test(ua)) return "Firefox";
-  if (/edg/i.test(ua)) return "Edge";
-  return "Mobile Browser";
-}
-
-function parseOS(ua) {
-  if (!ua) return "Android/iOS";
-  if (/android/i.test(ua)) return "Android";
-  if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
-  if (/mac os/i.test(ua)) return "macOS";
-  if (/windows/i.test(ua)) return "Windows";
-  if (/linux/i.test(ua)) return "Linux";
-  return "Other";
 }
