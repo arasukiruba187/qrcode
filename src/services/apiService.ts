@@ -2,14 +2,15 @@ import { QRCodeRecord, AnalyticsSummary, ScanLog } from '../types';
 import {
   DEFAULT_APPS_SCRIPT_URL_KEY,
   DEFAULT_LOCAL_STORAGE_KEY,
+  DEFAULT_FALLBACK_APPS_SCRIPT_URL,
   MOCK_QR_RECORDS
 } from '../config/appConfig';
 
 /**
- * Get current Google Apps Script Web App URL from localStorage
+ * Get current Google Apps Script Web App URL (reads from localStorage or env variable fallback)
  */
 export function getAppsScriptUrl(): string {
-  return localStorage.getItem(DEFAULT_APPS_SCRIPT_URL_KEY) || '';
+  return localStorage.getItem(DEFAULT_APPS_SCRIPT_URL_KEY) || DEFAULT_FALLBACK_APPS_SCRIPT_URL || '';
 }
 
 /**
