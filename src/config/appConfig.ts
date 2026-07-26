@@ -8,7 +8,7 @@ export const DEFAULT_LOCAL_STORAGE_KEY = "qr_studio_records_v1";
 export const THEME_KEY = "qr_studio_theme";
 
 // Default Web App URL fallback (reads from Vercel env variable VITE_APPS_SCRIPT_URL if set)
-export const DEFAULT_FALLBACK_APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || "";
+export const DEFAULT_FALLBACK_APPS_SCRIPT_URL = (import.meta as any).env?.VITE_APPS_SCRIPT_URL || "";
 
 // Default configuration for QR customization
 export const DEFAULT_QR_CUSTOMIZATION: QRCustomization = {
