@@ -53,10 +53,13 @@ export const DashboardPage: React.FC = () => {
     await handleUpdateRecord(record.id, { status: nextStatus });
   };
 
-  // DOWNLOAD PNG ALWAYS USES EXACT DESTINATION URL / USER DATA
+  // DOWNLOAD PNG (Encodes shortRedirectUrl for Dynamic QR, or staticContent for Static QR)
   const handleQuickDownloadPNG = (record: QRCodeRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    const exactContent = record.destinationUrl || record.staticContent || 'https://qrstudio.app';
+    const exactContent = record.qrType === 'dynamic'
+      ? (record.shortRedirectUrl || record.destinationUrl)
+      : (record.staticContent || record.destinationUrl || 'https://qrstudio.app');
+
     const qr = new QRCodeStyling({
       width: 400,
       height: 400,
@@ -79,7 +82,7 @@ export const DashboardPage: React.FC = () => {
       }
     });
     qr.download({ name: `${record.qrName.replace(/[^a-z0-9]/gi, '_')}_qr`, extension: 'png' });
-    addToast('Downloaded PNG for exact target URL', 'success');
+    addToast('Downloaded QR Code', 'success');
   };
 
   const handleGoToAnalytics = (record: QRCodeRecord, e: React.MouseEvent) => {
@@ -123,7 +126,7 @@ export const DashboardPage: React.FC = () => {
             Campaign Dashboard
           </h1>
           <p className="text-sm text-slate-400 light:text-slate-600 mt-1">
-            Search, filter, edit target links, and download exact QR codes.
+            Edit target links for existing QR codes without re-printing the QR image.
           </p>
         </div>
 
@@ -168,8 +171,8 @@ export const DashboardPage: React.FC = () => {
               className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs focus:outline-none focus:border-electric-500"
             >
               <option value="all">All QR Types</option>
-              <option value="dynamic">Tracked QR</option>
-              <option value="static">Direct QR</option>
+              <option value="dynamic">Dynamic QR</option>
+              <option value="static">Static QR</option>
             </select>
           </div>
 
@@ -252,7 +255,7 @@ export const DashboardPage: React.FC = () => {
 
                 {/* DESTINATION PREVIEW */}
                 <div className="p-3 rounded-xl bg-navy-950 light:bg-slate-50 border border-slate-800/80 light:border-slate-200 space-y-1">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Target Data / URL</span>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Current Target URL</span>
                   <p className="text-xs font-mono text-slate-300 light:text-slate-700 truncate">{targetUrl || 'Not specified'}</p>
                 </div>
 
@@ -279,7 +282,7 @@ export const DashboardPage: React.FC = () => {
                     <button
                       onClick={(e) => handleQuickDownloadPNG(r, e)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                      title="Download PNG for exact QR data"
+                      title="Download Permanent QR Code"
                     >
                       <Download className="w-4 h-4" />
                     </button>
