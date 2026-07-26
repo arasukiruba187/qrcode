@@ -14,7 +14,7 @@
  * 1. Open your Google Sheet.
  * 2. Click Extensions > Apps Script.
  * 3. Replace all code with this script.
- * 4. Run `setupDatabase` once or click "QR Studio > ⚙️ Setup QRCodes Sheet".
+ * 4. Select `setupDatabase` in the top toolbar and click "Run".
  * 5. Click Deploy > Manage Deployments > Edit (pencil) > New version > Deploy.
  * ==============================================================================
  */
@@ -41,6 +41,7 @@ function getDb() {
 /**
  * AUTOMATIC SINGLE-SHEET INITIALIZATION
  * Creates `QRCodes` sheet with exact columns and header formatting.
+ * SELECT THIS FUNCTION IN THE TOOLBAR TO RUN MANUALLY!
  */
 function setupDatabase(targetSs) {
   var ss = targetSs || (SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet());
@@ -77,6 +78,7 @@ function setupDatabase(targetSs) {
     } catch (e) {}
   }
 
+  Logger.log("Database initialized successfully! Created QRCodes sheet.");
   return "QRCodes sheet setup successfully!";
 }
 
@@ -96,7 +98,7 @@ function onOpen() {
  * Handle HTTP GET Requests
  */
 function doGet(e) {
-  var params = e ? e.parameter : {};
+  var params = (e && e.parameter) ? e.parameter : {};
   var action = params.action || "";
 
   getDb();
@@ -143,13 +145,13 @@ function doPost(e) {
       try {
         payload = JSON.parse(e.postData.contents);
       } catch (ex) {
-        payload = e.parameter || {};
+        payload = (e && e.parameter) ? e.parameter : {};
       }
     } else if (e && e.parameter) {
       payload = e.parameter;
     }
 
-    var action = payload.action || (e ? e.parameter.action : "");
+    var action = payload.action || ((e && e.parameter) ? e.parameter.action : "");
 
     switch (action) {
       case "createQR":
@@ -227,6 +229,7 @@ function findRowIndexById(sheet, idColumnIndex, targetId) {
  * ACTION: createQR
  */
 function handleCreateQR(payload) {
+  payload = payload || {};
   var sheet = getDb().getSheetByName("QRCodes");
   if (!sheet) return jsonResponse({ status: "error", message: "QRCodes sheet missing." }, 500);
 
@@ -313,6 +316,7 @@ function handleGetQRCodes(params) {
  * ACTION: getQR
  */
 function handleGetQR(params) {
+  params = params || {};
   var qrId = params.id;
   if (!qrId) return jsonResponse({ status: "error", message: "Missing QR ID." }, 400);
 
@@ -330,6 +334,7 @@ function handleGetQR(params) {
  * ACTION: updateQR
  */
 function handleUpdateQR(payload) {
+  payload = payload || {};
   var qrId = payload.id;
   if (!qrId) return jsonResponse({ status: "error", message: "Missing QR ID." }, 400);
 
@@ -364,6 +369,7 @@ function handleUpdateQR(payload) {
  * ACTION: deleteQR
  */
 function handleDeleteQR(payload) {
+  payload = payload || {};
   var qrId = payload.id;
   if (!qrId) return jsonResponse({ status: "error", message: "Missing QR ID." }, 400);
 
@@ -379,6 +385,7 @@ function handleDeleteQR(payload) {
  * ACTION: duplicateQR
  */
 function handleDuplicateQR(payload) {
+  payload = payload || {};
   var qrId = payload.id;
   if (!qrId) return jsonResponse({ status: "error", message: "Missing original QR ID." }, 400);
 
@@ -407,7 +414,7 @@ function handleDuplicateQR(payload) {
  * ACTION: handleRedirect (TOP-LEVEL BREAKOUT REDIRECT - Fixes "refused to connect")
  */
 function handleRedirect(e) {
-  var params = e.parameter;
+  var params = (e && e.parameter) ? e.parameter : {};
   var qrId = params.id;
 
   if (!qrId) {
@@ -419,7 +426,7 @@ function handleRedirect(e) {
 
   var sheet = getDb().getSheetByName("QRCodes");
   if (!sheet) {
-    return HtmlService.createHtmlOutput("<h3>QRCodes sheet not found.</h3>");
+    return HtmlService.createHtmlOutput("<h3>QRCodes sheet not found. Please run setupDatabase function.</h3>");
   }
 
   var data = sheet.getDataRange().getValues();
@@ -471,11 +478,11 @@ function handleRedirect(e) {
   // Increment totalScans and update lastScanAt
   if (rowIndex !== -1) {
     var updatedScans = targetQR.totalScans + 1;
-    sheet.getRange(rowIndex, 17).setValue(updatedScans); // Column 17: totalScans
-    sheet.getRange(rowIndex, 18).setValue(now);          // Column 18: lastScanAt
+    sheet.getRange(rowIndex, 17).setValue(updatedScans);
+    sheet.getRange(rowIndex, 18).setValue(now);
   }
 
-  // TOP-LEVEL BREAKOUT HTML REDIRECT (Fixes YouTube / strict X-Frame-Options sites)
+  // TOP-LEVEL BREAKOUT HTML REDIRECT
   var html = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
     '<title>Redirecting to Destination...</title>' +
@@ -500,6 +507,7 @@ function handleRedirect(e) {
  * ACTION: getAnalytics
  */
 function handleGetAnalytics(params) {
+  params = params || {};
   var qrId = params.id;
   var records = getSheetRecords("QRCodes");
   
