@@ -8,7 +8,7 @@
  * ----------------------------------------
  * - Stores QR records & destination URLs in 1 sheet: `QRCodes`
  * - NO detailed scan logging (no user-agent, IP, or visitor tracking).
- * - Instant top-level window replacement (Fixes "youtube.com refused to connect").
+ * - Target="_top" tap-enabled breakout UI (Bypasses Chrome sandbox restriction).
  * 
  * ⚠️ CRITICAL DEPLOYMENT STEP AFTER PASTING THIS CODE:
  * 1. Click Deploy > Manage Deployments in Google Apps Script.
@@ -410,7 +410,7 @@ function handleDuplicateQR(payload) {
 }
 
 /**
- * ACTION: handleRedirect (TOP-LEVEL BREAKOUT REDIRECT - Replaces whole browser window)
+ * ACTION: handleRedirect (TAP-ENABLED TARGET=_TOP BREAKOUT)
  */
 function handleRedirect(e) {
   var params = (e && e.parameter) ? e.parameter : {};
@@ -481,28 +481,31 @@ function handleRedirect(e) {
     sheet.getRange(rowIndex, 18).setValue(now);
   }
 
-  // TOP-LEVEL WINDOW BREAKOUT SCRIPT
-  var js = '<!DOCTYPE html><html><head>' +
+  // PREPARATION OF TAP-ENABLED TARGET=_TOP REDIRECT HTML
+  var html = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
-    '<title>Redirecting to Destination...</title>' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>Opening Destination...</title>' +
+    '<style>' +
+    '  body { margin: 0; padding: 0; background: #0B0F19; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; cursor: pointer; }' +
+    '  .card { background: #111827; border: 1px solid #1F2937; padding: 32px 24px; border-radius: 24px; max-width: 360px; width: 88%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }' +
+    '  .btn { display: block; margin-top: 20px; padding: 16px 24px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 700; font-size: 16px; text-decoration: none; border-radius: 16px; box-shadow: 0 10px 20px rgba(37,99,235,0.4); }' +
+    '  .pulse { animation: pulse 2s infinite; }' +
+    '  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }' +
+    '</style>' +
+    '</head><body onclick="var b=document.getElementById(\'rd\'); if(b) b.click();">' +
+    '<div class="card">' +
+    '  <div style="font-size: 40px; margin-bottom: 12px;">🚀</div>' +
+    '  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800;">Redirecting to Link</h3>' +
+    '  <p style="margin: 0 0 16px 0; font-size: 13px; color: #9CA3AF; word-break: break-all;">' + encodeURI(finalDestination) + '</p>' +
+    '  <a id="rd" class="btn pulse" href="' + encodeURI(finalDestination) + '" target="_top">Tap to Open Destination ↗</a>' +
+    '</div>' +
     '<script>' +
-    'function doRedirect(){' +
-    '  var target = ' + JSON.stringify(finalDestination) + ';' +
-    '  try {' +
-    '    if (window.top && window.top !== window) { window.top.location.replace(target); }' +
-    '    else { window.location.replace(target); }' +
-    '  } catch(e) {' +
-    '    window.location.href = target;' +
-    '  }' +
-    '}' +
-    'doRedirect();' +
+    'setTimeout(function(){ var b=document.getElementById("rd"); if(b) b.click(); }, 150);' +
     '</script>' +
-    '</head><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0B0F19;color:#fff;" onload="doRedirect()">' +
-    '<h2>Redirecting to destination...</h2>' +
-    '<p style="margin-top:20px;"><a href="' + encodeURI(finalDestination) + '" target="_top" style="color:#3B82F6;font-size:18px;font-weight:bold;text-decoration:underline;">Click here to open YouTube / Destination</a></p>' +
     '</body></html>';
 
-  return HtmlService.createHtmlOutput(js).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
