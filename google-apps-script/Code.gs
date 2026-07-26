@@ -8,14 +8,14 @@
  * ----------------------------------------
  * - Stores QR records & destination URLs in 1 sheet: `QRCodes`
  * - NO detailed scan logging (no user-agent, IP, or visitor tracking).
- * - Instant redirection with scan count increment.
+ * - Instant top-level window redirection (Fixes iframe refused to connect).
  * 
  * SETUP INSTRUCTIONS:
  * 1. Open your Google Sheet.
  * 2. Click Extensions > Apps Script.
  * 3. Replace all code with this script.
  * 4. Run `setupDatabase` once or click "QR Studio > ⚙️ Setup QRCodes Sheet".
- * 5. Click Deploy > New deployment > Web App (Execute as: Me, Access: Anyone).
+ * 5. Click Deploy > Manage Deployments > Edit (pencil) > New version > Deploy.
  * ==============================================================================
  */
 
@@ -404,7 +404,7 @@ function handleDuplicateQR(payload) {
 }
 
 /**
- * ACTION: handleRedirect (Fast Dynamic Redirect - NO DETAILED LOGGING)
+ * ACTION: handleRedirect (TOP-LEVEL BREAKOUT REDIRECT - Fixes "refused to connect")
  */
 function handleRedirect(e) {
   var params = e.parameter;
@@ -468,34 +468,40 @@ function handleRedirect(e) {
 
   var now = new Date().toISOString();
 
-  // Increment totalScans and update lastScanAt in QRCodes sheet (NO scanLogs sheet)
+  // Increment totalScans and update lastScanAt
   if (rowIndex !== -1) {
     var updatedScans = targetQR.totalScans + 1;
     sheet.getRange(rowIndex, 17).setValue(updatedScans); // Column 17: totalScans
     sheet.getRange(rowIndex, 18).setValue(now);          // Column 18: lastScanAt
   }
 
-  // Fast Instant Redirect HTML
+  // TOP-LEVEL BREAKOUT HTML REDIRECT (Fixes YouTube / strict X-Frame-Options sites)
   var html = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
-    '<meta http-equiv="refresh" content="0;url=' + encodeURI(finalDestination) + '">' +
-    '<script>window.location.href = "' + encodeURI(finalDestination) + '";</script>' +
-    '<title>Redirecting...</title>' +
+    '<title>Redirecting to Destination...</title>' +
+    '<script>' +
+    '  var target = ' + JSON.stringify(finalDestination) + ';' +
+    '  try {' +
+    '    if (window.top) { window.top.location.href = target; }' +
+    '    else { window.location.href = target; }' +
+    '  } catch(e) {' +
+    '    window.location.href = target;' +
+    '  }' +
+    '</script>' +
     '</head><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0B0F19;color:#fff;">' +
     '<h2>Redirecting to destination...</h2>' +
-    '<p>If you are not redirected automatically, <a href="' + encodeURI(finalDestination) + '" style="color:#3B82F6;">click here</a>.</p>' +
+    '<p style="margin-top:20px;"><a href="' + encodeURI(finalDestination) + '" target="_top" style="color:#3B82F6;font-size:18px;font-weight:bold;text-decoration:underline;">Click here if not redirected automatically</a></p>' +
     '</body></html>';
 
   return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
- * ACTION: getAnalytics (Simplified)
+ * ACTION: getAnalytics
  */
 function handleGetAnalytics(params) {
   var qrId = params.id;
   var records = getSheetRecords("QRCodes");
-  var target = null;
   
   if (qrId) {
     records = records.filter(function(r) { return String(r.id) === String(qrId); });
