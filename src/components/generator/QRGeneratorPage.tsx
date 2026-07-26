@@ -26,7 +26,6 @@ import {
 export const QRGeneratorPage: React.FC = () => {
   const { handleCreateRecord, setCurrentTab, addToast } = useApp();
   
-  // Default to Static QR so scanning directly reveals user's exact pasted data!
   const [qrType, setQrType] = useState<QRType>('static');
   const [contentType, setContentType] = useState<QRContentType>('url');
   const [qrName, setQrName] = useState<string>('My Direct QR Code');
@@ -99,13 +98,11 @@ export const QRGeneratorPage: React.FC = () => {
     setCustomization((prev) => ({ ...prev, ...updated }));
   };
 
-  // Raw Content Calculation (The exact string pasted by user)
+  // Raw Content Calculation (The exact URL / text pasted by user)
   const formattedContent = formatQRContent(contentType, formData);
   
-  // Display string in Preview: Static directly uses formattedContent!
-  const previewContent = qrType === 'static'
-    ? formattedContent
-    : (getAppsScriptUrl() ? `${getAppsScriptUrl()}?action=redirect&id=PREVIEW_ID` : `https://script.google.com/macros/s/DEPLOYMENT_ID/exec?action=redirect&id=PREVIEW_ID`);
+  // DIRECT ENCODING FOR ALL QR CODES (Both Static & Dynamic encode exact user input URL/data)
+  const previewContent = formattedContent;
 
   const handleSaveQR = async () => {
     // Validate Form
@@ -125,8 +122,8 @@ export const QRGeneratorPage: React.FC = () => {
         qrType,
         contentType,
         staticContent: formattedContent,
-        destinationUrl: qrType === 'dynamic' ? formattedContent : '',
-        shortRedirectUrl: '',
+        destinationUrl: formattedContent,
+        shortRedirectUrl: formattedContent,
         status: 'active',
         expiresAt: expiresAt || undefined,
         scanLimit: scanLimit > 0 ? scanLimit : undefined,
@@ -156,11 +153,11 @@ export const QRGeneratorPage: React.FC = () => {
             QR Code Generator
           </h1>
           <p className="text-sm text-slate-400 light:text-slate-600 mt-1">
-            Build and customize direct QR codes or dynamic campaigns in real-time.
+            Build and customize direct QR codes saved to your Google Sheet in real-time.
           </p>
         </div>
 
-        {/* Static vs Dynamic Main Tab Switcher */}
+        {/* Mode Selector */}
         <div className="flex items-center p-1.5 rounded-2xl bg-navy-900 light:bg-slate-100 border border-slate-800 light:border-slate-300 w-fit">
           <button
             onClick={() => setQrType('static')}
@@ -171,7 +168,7 @@ export const QRGeneratorPage: React.FC = () => {
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Static QR (Direct Scan to Pasted Data)</span>
+            <span>Direct Input QR (Scans to Pasted Link)</span>
           </button>
 
           <button
@@ -183,33 +180,21 @@ export const QRGeneratorPage: React.FC = () => {
             }`}
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Dynamic QR (Editable Target Link)</span>
+            <span>Tracked QR (Saved to Sheets)</span>
           </button>
         </div>
       </div>
 
       {/* CLEAR EXPLANATION BANNER */}
-      {qrType === 'static' ? (
-        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-white">Direct Scan Mode Active (Static QR)</p>
-            <p className="text-slate-300 light:text-slate-600 mt-0.5">
-              The QR code image directly encodes the exact text/URL you paste below. When scanned by any phone camera, it immediately opens your pasted content without redirecting through Google Apps Script.
-            </p>
-          </div>
+      <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3">
+        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold text-white">Direct Scanning Enabled</p>
+          <p className="text-slate-300 light:text-slate-600 mt-0.5">
+            Scanning this QR code with any phone camera will directly open <strong>"{formattedContent}"</strong> without opening Apps Script or any redirect page.
+          </p>
         </div>
-      ) : (
-        <div className="p-4 rounded-2xl bg-electric-950/40 border border-electric-500/30 text-electric-200 text-xs flex items-start gap-3">
-          <Info className="w-4 h-4 text-electric-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-white">Dynamic Redirect Mode Active</p>
-            <p className="text-slate-300 light:text-slate-600 mt-0.5">
-              Encodes a short Apps Script redirect link so you can update where the QR code points in Google Sheets at any time without re-printing.
-            </p>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* MAIN TWO-COLUMN LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -300,41 +285,40 @@ export const QRGeneratorPage: React.FC = () => {
                   onChange={handleFormDataChange}
                 />
 
-                {/* Dynamic QR Options */}
-                {qrType === 'dynamic' && (
-                  <div className="pt-6 border-t border-slate-800 light:border-slate-200 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-300 light:text-slate-700 uppercase tracking-wider">
-                      Dynamic Campaign Options
-                    </h4>
+                {/* Additional Tag Options */}
+                <div className="pt-6 border-t border-slate-800 light:border-slate-200 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-300 light:text-slate-700 uppercase tracking-wider">
+                    Categorization & Tags
+                  </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1.5">Campaign Group Tag</label>
-                        <div className="relative">
-                          <Tag className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                          <input
-                            type="text"
-                            value={campaign}
-                            onChange={(e) => setCampaign(e.target.value)}
-                            placeholder="e.g. Marketing Q3"
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1.5">Comma-Separated Tags</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1.5">Campaign Tag</label>
+                      <div className="relative">
+                        <Tag className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                         <input
                           type="text"
-                          value={tagsInput}
-                          onChange={(e) => setTagsInput(e.target.value)}
-                          placeholder="e.g. restaurant, print, menu"
-                          className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
+                          value={campaign}
+                          onChange={(e) => setCampaign(e.target.value)}
+                          placeholder="e.g. Marketing"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
                         />
                       </div>
                     </div>
+
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1.5">Comma-Separated Tags</label>
+                      <input
+                        type="text"
+                        value={tagsInput}
+                        onChange={(e) => setTagsInput(e.target.value)}
+                        placeholder="e.g. website, personal"
+                        className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
+                      />
+                    </div>
                   </div>
-                )}
+                </div>
+
               </div>
             )}
 
