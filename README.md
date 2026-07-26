@@ -50,34 +50,22 @@
 
 ---
 
-## 📁 Repository Structure
+## 🌐 Deploy to Vercel (Recommended)
 
-```
-QR code generator/
-├── google-apps-script/
-│   ├── Code.gs             # Complete Google Apps Script backend code
-│   └── README.md           # Step-by-step Google Sheets setup guide
-├── src/
-│   ├── components/
-│   │   ├── analytics/      # Dynamic QR Analytics dashboard
-│   │   ├── common/         # Header, Footer, Toast, Modal
-│   │   ├── dashboard/      # Campaign Dashboard & QR Detail Modal
-│   │   ├── generator/      # 14 Content Type forms, Customization panel, Live preview
-│   │   ├── landing/        # Hero page, Static vs Dynamic comparison matrix, FAQ
-│   │   ├── print/          # Printable QR card view
-│   │   └── settings/       # Apps Script Web App URL setup
-│   ├── config/             # App defaults, preset templates & mock database
-│   ├── context/            # ThemeContext (Dark/Light) & AppContext
-│   ├── services/           # apiService, qrGenerator formatters, scanabilityChecker
-│   ├── types/              # TypeScript interfaces & types
-│   ├── App.tsx             # Main routing & app container
-│   ├── index.css           # Tailwind directives & glassmorphism CSS
-│   └── main.tsx            # Entry point
-├── index.html              # HTML shell & font definitions
-├── package.json            # Node dependencies
-├── tailwind.config.js      # Custom navy & electric blue theme setup
-├── tsconfig.json           # TypeScript configuration
-└── vite.config.ts          # Vite build config
+### Option 1: Vercel Dashboard (1-Click GitHub Import)
+1. Go to [vercel.com](https://vercel.com) and log in with your GitHub account.
+2. Click **Add New > Project**.
+3. Select your repository: **`arasukiruba187/qrcode`**.
+4. Vercel auto-detects Vite:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. Click **Deploy**. Your app will be live in 30 seconds at a `https://qrcode-xxxx.vercel.app` URL!
+
+### Option 2: Vercel CLI
+```bash
+npm install -g vercel
+vercel
 ```
 
 ---
@@ -106,20 +94,13 @@ QR code generator/
 
 To persist QR codes and track scan analytics to your own Google Sheet:
 
-1. Open Drive and create a new Google Sheet named **`QR Studio Database`**.
-2. Create 3 sheets named: `QRCodes`, `ScanLogs`, and `Settings`.
-3. Add the exact row 1 column headers documented in `google-apps-script/README.md`.
-4. Open **Extensions > Apps Script**, paste `google-apps-script/Code.gs`, and click **Deploy > New deployment**.
-5. Set **Execute as**: `Me`, **Who has access**: `Anyone`.
-6. Copy the deployed Web App URL.
-7. Open QR Studio > **Settings** > Paste your Web App URL > Click **Save & Connect**.
-
----
-
-## ⚠️ Known Limitations & Architecture Notes
-
-- **Apps Script Quotas**: Google Apps Script web apps operate under standard Google API daily quotas (~20,000 requests/day for standard Google accounts).
-- **Analytics Precision**: Device types, OS, and browsers are parsed from HTTP User-Agent headers. Unique visitors are estimated via anonymized session tokens.
+1. Open Drive and create a new Google Spreadsheet named **`QR Studio Database`**.
+2. Click **Extensions > Apps Script**, paste `google-apps-script/Code.gs`, and run `setupDatabase`.
+3. Click **Deploy > New deployment > Web app**:
+   - **Execute as**: `Me`
+   - **Who has access**: `Anyone`
+4. Copy the deployed Web App URL.
+5. Open your deployed QR Studio site > **Settings** > Paste your Web App URL > Click **Save & Connect**.
 
 ---
 
