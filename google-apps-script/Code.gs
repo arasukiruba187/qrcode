@@ -8,14 +8,13 @@
  * ----------------------------------------
  * - Stores QR records & destination URLs in 1 sheet: `QRCodes`
  * - NO detailed scan logging (no user-agent, IP, or visitor tracking).
- * - Instant top-level window redirection (Fixes iframe refused to connect).
+ * - Instant top-level window replacement (Fixes "youtube.com refused to connect").
  * 
- * SETUP INSTRUCTIONS:
- * 1. Open your Google Sheet.
- * 2. Click Extensions > Apps Script.
- * 3. Replace all code with this script.
- * 4. Select `setupDatabase` in the top toolbar and click "Run".
- * 5. Click Deploy > Manage Deployments > Edit (pencil) > New version > Deploy.
+ * ⚠️ CRITICAL DEPLOYMENT STEP AFTER PASTING THIS CODE:
+ * 1. Click Deploy > Manage Deployments in Google Apps Script.
+ * 2. Click the ✏️ Edit icon on your active deployment.
+ * 3. Change "Version" to "NEW VERSION" (Crucial! Otherwise old code runs).
+ * 4. Click Deploy.
  * ==============================================================================
  */
 
@@ -411,7 +410,7 @@ function handleDuplicateQR(payload) {
 }
 
 /**
- * ACTION: handleRedirect (TOP-LEVEL BREAKOUT REDIRECT - Fixes "refused to connect")
+ * ACTION: handleRedirect (TOP-LEVEL BREAKOUT REDIRECT - Replaces whole browser window)
  */
 function handleRedirect(e) {
   var params = (e && e.parameter) ? e.parameter : {};
@@ -482,25 +481,28 @@ function handleRedirect(e) {
     sheet.getRange(rowIndex, 18).setValue(now);
   }
 
-  // TOP-LEVEL BREAKOUT HTML REDIRECT
-  var html = '<!DOCTYPE html><html><head>' +
+  // TOP-LEVEL WINDOW BREAKOUT SCRIPT
+  var js = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
     '<title>Redirecting to Destination...</title>' +
     '<script>' +
+    'function doRedirect(){' +
     '  var target = ' + JSON.stringify(finalDestination) + ';' +
     '  try {' +
-    '    if (window.top) { window.top.location.href = target; }' +
-    '    else { window.location.href = target; }' +
+    '    if (window.top && window.top !== window) { window.top.location.replace(target); }' +
+    '    else { window.location.replace(target); }' +
     '  } catch(e) {' +
     '    window.location.href = target;' +
     '  }' +
+    '}' +
+    'doRedirect();' +
     '</script>' +
-    '</head><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0B0F19;color:#fff;">' +
+    '</head><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0B0F19;color:#fff;" onload="doRedirect()">' +
     '<h2>Redirecting to destination...</h2>' +
-    '<p style="margin-top:20px;"><a href="' + encodeURI(finalDestination) + '" target="_top" style="color:#3B82F6;font-size:18px;font-weight:bold;text-decoration:underline;">Click here if not redirected automatically</a></p>' +
+    '<p style="margin-top:20px;"><a href="' + encodeURI(finalDestination) + '" target="_top" style="color:#3B82F6;font-size:18px;font-weight:bold;text-decoration:underline;">Click here to open YouTube / Destination</a></p>' +
     '</body></html>';
 
-  return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return HtmlService.createHtmlOutput(js).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
