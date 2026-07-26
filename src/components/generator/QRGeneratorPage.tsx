@@ -19,23 +19,26 @@ import {
   Lock,
   Hash,
   Database,
-  Info
+  Info,
+  Check
 } from 'lucide-react';
 
 export const QRGeneratorPage: React.FC = () => {
   const { handleCreateRecord, setCurrentTab, addToast } = useApp();
-  const [qrType, setQrType] = useState<QRType>('dynamic');
+  
+  // Default to Static QR so scanning directly reveals user's exact pasted data!
+  const [qrType, setQrType] = useState<QRType>('static');
   const [contentType, setContentType] = useState<QRContentType>('url');
-  const [qrName, setQrName] = useState<string>('My QR Code');
+  const [qrName, setQrName] = useState<string>('My Direct QR Code');
   const [campaign, setCampaign] = useState<string>('');
-  const [tagsInput, setTagsInput] = useState<string>('marketing, campaign');
+  const [tagsInput, setTagsInput] = useState<string>('direct, QR');
   const [expiresAt, setExpiresAt] = useState<string>('');
   const [scanLimit, setScanLimit] = useState<number>(0);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Form State
   const [formData, setFormData] = useState<ContentTypeFormData>({
-    url: 'https://qrstudio.app',
+    url: 'https://google.com',
     text: '',
     emailAddress: '',
     emailSubject: '',
@@ -96,19 +99,16 @@ export const QRGeneratorPage: React.FC = () => {
     setCustomization((prev) => ({ ...prev, ...updated }));
   };
 
-  // Raw Content Calculation
+  // Raw Content Calculation (The exact string pasted by user)
   const formattedContent = formatQRContent(contentType, formData);
   
-  // Destination for Dynamic QR
-  const dynamicDestinationUrl = formattedContent;
-  
-  // Display string in Preview
-  const previewContent = qrType === 'dynamic' 
-    ? (getAppsScriptUrl() ? `${getAppsScriptUrl()}?action=redirect&id=PREVIEW_ID` : `https://script.google.com/macros/s/DEPLOYMENT_ID/exec?action=redirect&id=PREVIEW_ID`)
-    : formattedContent;
+  // Display string in Preview: Static directly uses formattedContent!
+  const previewContent = qrType === 'static'
+    ? formattedContent
+    : (getAppsScriptUrl() ? `${getAppsScriptUrl()}?action=redirect&id=PREVIEW_ID` : `https://script.google.com/macros/s/DEPLOYMENT_ID/exec?action=redirect&id=PREVIEW_ID`);
 
   const handleSaveQR = async () => {
-    // 1. Validate Form
+    // Validate Form
     const validation = validateContentTypeForm(contentType, formData);
     if (!validation.valid) {
       addToast(validation.error || 'Please fill in required fields.', 'error');
@@ -124,8 +124,8 @@ export const QRGeneratorPage: React.FC = () => {
         qrName: qrName.trim() || 'Untitled QR',
         qrType,
         contentType,
-        staticContent: qrType === 'static' ? formattedContent : '',
-        destinationUrl: qrType === 'dynamic' ? dynamicDestinationUrl : '',
+        staticContent: formattedContent,
+        destinationUrl: qrType === 'dynamic' ? formattedContent : '',
         shortRedirectUrl: '',
         status: 'active',
         expiresAt: expiresAt || undefined,
@@ -136,7 +136,6 @@ export const QRGeneratorPage: React.FC = () => {
         createdBy: 'Arasukirubanandhan'
       });
 
-      // Navigate to Dashboard
       setCurrentTab('dashboard');
     } catch (err) {
       console.error(err);
@@ -157,12 +156,24 @@ export const QRGeneratorPage: React.FC = () => {
             QR Code Generator
           </h1>
           <p className="text-sm text-slate-400 light:text-slate-600 mt-1">
-            Build, customize, and publish static or dynamic QR codes in real-time.
+            Build and customize direct QR codes or dynamic campaigns in real-time.
           </p>
         </div>
 
         {/* Static vs Dynamic Main Tab Switcher */}
         <div className="flex items-center p-1.5 rounded-2xl bg-navy-900 light:bg-slate-100 border border-slate-800 light:border-slate-300 w-fit">
+          <button
+            onClick={() => setQrType('static')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              qrType === 'static'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                : 'text-slate-400 light:text-slate-600 hover:text-white'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Static QR (Direct Scan to Pasted Data)</span>
+          </button>
+
           <button
             onClick={() => setQrType('dynamic')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
@@ -172,30 +183,29 @@ export const QRGeneratorPage: React.FC = () => {
             }`}
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Dynamic QR (Editable & Analytics)</span>
-          </button>
-          <button
-            onClick={() => setQrType('static')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              qrType === 'static'
-                ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-                : 'text-slate-400 light:text-slate-600 hover:text-white'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Static QR (Permanent Content)</span>
+            <span>Dynamic QR (Editable Target Link)</span>
           </button>
         </div>
       </div>
 
-      {/* DYNAMIC QR DISCLAIMER NOTE */}
-      {qrType === 'dynamic' && (
+      {/* CLEAR EXPLANATION BANNER */}
+      {qrType === 'static' ? (
+        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-white">Direct Scan Mode Active (Static QR)</p>
+            <p className="text-slate-300 light:text-slate-600 mt-0.5">
+              The QR code image directly encodes the exact text/URL you paste below. When scanned by any phone camera, it immediately opens your pasted content without redirecting through Google Apps Script.
+            </p>
+          </div>
+        </div>
+      ) : (
         <div className="p-4 rounded-2xl bg-electric-950/40 border border-electric-500/30 text-electric-200 text-xs flex items-start gap-3">
           <Info className="w-4 h-4 text-electric-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-white">Dynamic Redirect & Google Apps Script Quota Note</p>
+            <p className="font-semibold text-white">Dynamic Redirect Mode Active</p>
             <p className="text-slate-300 light:text-slate-600 mt-0.5">
-              Dynamic QR codes route through your Google Apps Script Web App API to log scans in Google Sheets before redirecting to your destination. Standard Google API execution limits (~20,000 requests/day) apply.
+              Encodes a short Apps Script redirect link so you can update where the QR code points in Google Sheets at any time without re-printing.
             </p>
           </div>
         </div>
@@ -265,20 +275,20 @@ export const QRGeneratorPage: React.FC = () => {
               </button>
             </div>
 
-            {/* TAB PANEL 1: DATA FORM & CAMPAIGN METADATA */}
+            {/* TAB PANEL 1: DATA FORM */}
             {activeTabPanel === 'content' && (
               <div className="space-y-6">
                 
                 {/* QR Title */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-2">
-                    QR Name / Campaign Title *
+                    QR Name / Label *
                   </label>
                   <input
                     type="text"
                     value={qrName}
                     onChange={(e) => setQrName(e.target.value)}
-                    placeholder="e.g. Summer Promo 2026 Flyer"
+                    placeholder="e.g. My Website QR"
                     className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-medium focus:outline-none focus:border-electric-500"
                   />
                 </div>
@@ -290,7 +300,7 @@ export const QRGeneratorPage: React.FC = () => {
                   onChange={handleFormDataChange}
                 />
 
-                {/* Dynamic QR Campaign Settings */}
+                {/* Dynamic QR Options */}
                 {qrType === 'dynamic' && (
                   <div className="pt-6 border-t border-slate-800 light:border-slate-200 space-y-4">
                     <h4 className="text-xs font-bold text-slate-300 light:text-slate-700 uppercase tracking-wider">
@@ -319,30 +329,6 @@ export const QRGeneratorPage: React.FC = () => {
                           value={tagsInput}
                           onChange={(e) => setTagsInput(e.target.value)}
                           placeholder="e.g. restaurant, print, menu"
-                          className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1.5">Optional Expiration Date</label>
-                        <input
-                          type="date"
-                          value={expiresAt}
-                          onChange={(e) => setExpiresAt(e.target.value)}
-                          className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1.5">Scan Limit (0 = Unlimited)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={scanLimit}
-                          onChange={(e) => setScanLimit(parseInt(e.target.value) || 0)}
-                          placeholder="1000"
                           className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs"
                         />
                       </div>
