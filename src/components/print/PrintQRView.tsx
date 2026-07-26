@@ -11,14 +11,13 @@ export const PrintQRView: React.FC = () => {
   useEffect(() => {
     if (!printRecord) return;
 
-    const content = printRecord.qrType === 'dynamic'
-      ? (printRecord.shortRedirectUrl || printRecord.destinationUrl)
-      : printRecord.staticContent;
+    // ALWAYS ENCODE EXACT TARGET URL / DATA
+    const exactContent = printRecord.destinationUrl || printRecord.staticContent || 'https://qrstudio.app';
 
     const qr = new QRCodeStyling({
       width: 320,
       height: 320,
-      data: content || 'https://qrstudio.app',
+      data: exactContent,
       margin: printRecord.customizationJson?.margin || 10,
       dotsOptions: {
         color: printRecord.customizationJson?.dotsColor || '#000000',
@@ -57,7 +56,7 @@ export const PrintQRView: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/90 backdrop-blur-md p-4 overflow-y-auto print:p-0 print:bg-white print:static">
       
-      {/* Print Controls Top Bar (Hidden during actual print) */}
+      {/* Print Controls Top Bar */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-3 print:hidden">
         <button
           onClick={handleExecutePrint}
@@ -102,7 +101,7 @@ export const PrintQRView: React.FC = () => {
             Point Camera to Scan QR Code
           </p>
           <p className="text-xs text-slate-500">
-            Powered by QR Studio • Dynamic Campaign Managed
+            Generated via QR Studio • {DESIGNER_CREDIT}
           </p>
         </div>
 

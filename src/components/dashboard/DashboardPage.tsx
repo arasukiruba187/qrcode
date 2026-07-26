@@ -53,19 +53,33 @@ export const DashboardPage: React.FC = () => {
     await handleUpdateRecord(record.id, { status: nextStatus });
   };
 
+  // DOWNLOAD PNG ALWAYS USES EXACT DESTINATION URL / USER DATA
   const handleQuickDownloadPNG = (record: QRCodeRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    const content = record.qrType === 'dynamic' ? (record.shortRedirectUrl || record.destinationUrl) : record.staticContent;
+    const exactContent = record.destinationUrl || record.staticContent || 'https://qrstudio.app';
     const qr = new QRCodeStyling({
       width: 400,
       height: 400,
-      data: content || 'https://qrstudio.app',
+      data: exactContent,
       margin: record.customizationJson?.margin || 10,
       dotsOptions: { color: record.customizationJson?.dotsColor || '#000', type: record.customizationJson?.dotsStyle || 'square' },
       backgroundOptions: { color: record.customizationJson?.bgColor || '#fff' },
+      cornersSquareOptions: {
+        color: record.customizationJson?.cornerSquareColor || record.customizationJson?.dotsColor || '#000000',
+        type: record.customizationJson?.cornerSquareStyle || 'square',
+      },
+      cornersDotOptions: {
+        color: record.customizationJson?.cornerDotColor || record.customizationJson?.cornerSquareColor || '#000000',
+        type: record.customizationJson?.cornerDotStyle || 'square',
+      },
+      image: record.customizationJson?.logoUrl || undefined,
+      imageOptions: {
+        imageSize: record.customizationJson?.logoSizeRatio || 0.2,
+        margin: 4,
+      }
     });
     qr.download({ name: `${record.qrName.replace(/[^a-z0-9]/gi, '_')}_qr`, extension: 'png' });
-    addToast('Downloaded PNG QR Code', 'success');
+    addToast('Downloaded PNG for exact target URL', 'success');
   };
 
   const handleGoToAnalytics = (record: QRCodeRecord, e: React.MouseEvent) => {
@@ -76,7 +90,6 @@ export const DashboardPage: React.FC = () => {
 
   // Filtering Logic
   const filteredRecords = records.filter((r) => {
-    // Search
     const matchesSearch =
       r.qrName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.destinationUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,13 +97,8 @@ export const DashboardPage: React.FC = () => {
       (r.campaign && r.campaign.toLowerCase().includes(searchTerm.toLowerCase())) ||
       r.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // Type
     const matchesType = typeFilter === 'all' || r.qrType === typeFilter;
-
-    // Status
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-
-    // Content Type
     const matchesContentType = contentTypeFilter === 'all' || r.contentType === contentTypeFilter;
 
     return matchesSearch && matchesType && matchesStatus && matchesContentType;
@@ -115,7 +123,7 @@ export const DashboardPage: React.FC = () => {
             Campaign Dashboard
           </h1>
           <p className="text-sm text-slate-400 light:text-slate-600 mt-1">
-            Search, filter, edit destination links, and inspect analytics for all QR codes.
+            Search, filter, edit target links, and download exact QR codes.
           </p>
         </div>
 
@@ -141,10 +149,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* FILTER & SEARCH CONTROL BAR */}
       <div className="p-5 rounded-3xl bg-navy-900/70 light:bg-white border border-slate-800 light:border-slate-200 space-y-4 shadow-xl">
-        
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          
-          {/* Search Box (6 Cols) */}
           <div className="md:col-span-6 relative">
             <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
             <input
@@ -156,7 +161,6 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
 
-          {/* QR Type Filter (2 Cols) */}
           <div className="md:col-span-2">
             <select
               value={typeFilter}
@@ -164,12 +168,11 @@ export const DashboardPage: React.FC = () => {
               className="w-full p-2.5 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-xs focus:outline-none focus:border-electric-500"
             >
               <option value="all">All QR Types</option>
-              <option value="dynamic">Dynamic QR</option>
-              <option value="static">Static QR</option>
+              <option value="dynamic">Tracked QR</option>
+              <option value="static">Direct QR</option>
             </select>
           </div>
 
-          {/* Status Filter (2 Cols) */}
           <div className="md:col-span-2">
             <select
               value={statusFilter}
@@ -182,7 +185,6 @@ export const DashboardPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Sort By (2 Cols) */}
           <div className="md:col-span-2">
             <select
               value={sortBy}
@@ -219,7 +221,7 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedRecords.map((r) => {
             const ContentIcon = ContentTypeIconMap[r.contentType]?.icon || Globe;
-            const targetUrl = r.qrType === 'dynamic' ? r.destinationUrl : r.staticContent;
+            const targetUrl = r.destinationUrl || r.staticContent;
 
             return (
               <div
@@ -242,7 +244,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
 
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    r.qrType === 'dynamic' ? 'bg-electric-500/20 text-electric-300 border border-electric-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    r.qrType === 'dynamic' ? 'bg-electric-500/20 text-electric-300 border border-electric-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                   }`}>
                     {r.qrType}
                   </span>
@@ -250,7 +252,7 @@ export const DashboardPage: React.FC = () => {
 
                 {/* DESTINATION PREVIEW */}
                 <div className="p-3 rounded-xl bg-navy-950 light:bg-slate-50 border border-slate-800/80 light:border-slate-200 space-y-1">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Destination</span>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Target Data / URL</span>
                   <p className="text-xs font-mono text-slate-300 light:text-slate-700 truncate">{targetUrl || 'Not specified'}</p>
                 </div>
 
@@ -277,20 +279,18 @@ export const DashboardPage: React.FC = () => {
                     <button
                       onClick={(e) => handleQuickDownloadPNG(r, e)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                      title="Download PNG"
+                      title="Download PNG for exact QR data"
                     >
                       <Download className="w-4 h-4" />
                     </button>
 
-                    {r.qrType === 'dynamic' && (
-                      <button
-                        onClick={(e) => handleGoToAnalytics(r, e)}
-                        className="p-1.5 rounded-lg text-electric-400 hover:bg-electric-500/20 transition-colors"
-                        title="View Analytics"
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => handleGoToAnalytics(r, e)}
+                      className="p-1.5 rounded-lg text-electric-400 hover:bg-electric-500/20 transition-colors"
+                      title="View Analytics"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 

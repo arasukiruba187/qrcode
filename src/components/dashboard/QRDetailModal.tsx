@@ -49,7 +49,9 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
     try {
       await handleUpdateRecord(record.id, {
         qrName,
-        destinationUrl: record.qrType === 'dynamic' ? destinationUrl : record.destinationUrl,
+        destinationUrl: destinationUrl,
+        staticContent: destinationUrl,
+        shortRedirectUrl: destinationUrl,
         status,
       });
       onClose();
@@ -60,10 +62,10 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
     }
   };
 
-  const handleCopyShortUrl = () => {
-    const target = record.shortRedirectUrl || record.destinationUrl || record.staticContent;
+  const handleCopyTargetUrl = () => {
+    const target = destinationUrl || record.destinationUrl || record.staticContent;
     navigator.clipboard.writeText(target);
-    addToast('Copied link to clipboard!', 'success');
+    addToast('Copied exact target link to clipboard!', 'success');
   };
 
   const handleViewAnalytics = () => {
@@ -92,7 +94,7 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-navy-950 light:bg-slate-100 border border-slate-800 light:border-slate-300">
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              record.qrType === 'dynamic' ? 'bg-electric-500/20 text-electric-300' : 'bg-amber-500/20 text-amber-300'
+              record.qrType === 'dynamic' ? 'bg-electric-500/20 text-electric-300' : 'bg-emerald-500/20 text-emerald-300'
             }`}>
               {record.qrType}
             </span>
@@ -144,35 +146,41 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
             />
           </div>
 
-          {record.qrType === 'dynamic' ? (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-                Editable Destination URL
-              </label>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
+              Exact Target URL / Encoded Content
+            </label>
+            <div className="flex items-center gap-2">
               <input
-                type="url"
+                type="text"
                 value={destinationUrl}
                 onChange={(e) => setDestinationUrl(e.target.value)}
-                placeholder="https://yournewtargeturl.com"
+                placeholder="https://yourwebsite.com"
                 className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-mono focus:outline-none focus:border-electric-500"
               />
-              <p className="text-xs text-slate-400 mt-1">
-                Updating this URL changes where existing physical QR prints redirect to instantaneously.
-              </p>
+              <button
+                onClick={handleCopyTargetUrl}
+                className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium shrink-0 flex items-center gap-1"
+                title="Copy URL"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              {/^https?:\/\//i.test(destinationUrl) && (
+                <a
+                  href={destinationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-3 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-medium shrink-0 flex items-center gap-1"
+                  title="Open Link"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
             </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-                Static Embedded Content (Read-Only)
-              </label>
-              <textarea
-                readOnly
-                value={record.staticContent}
-                rows={3}
-                className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-800 text-slate-400 font-mono text-xs cursor-not-allowed"
-              />
-            </div>
-          )}
+            <p className="text-xs text-slate-400 mt-1">
+              Scanning this QR code with any camera will open this exact URL directly.
+            </p>
+          </div>
 
           {/* Status Toggle */}
           <div>
@@ -189,7 +197,7 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
                 }`}
               >
                 <PlayCircle className="w-4 h-4" />
-                <span>Active (Redirecting)</span>
+                <span>Active</span>
               </button>
 
               <button
@@ -201,41 +209,10 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
                 }`}
               >
                 <PauseCircle className="w-4 h-4" />
-                <span>Paused (Shows Paused Notice)</span>
+                <span>Paused</span>
               </button>
             </div>
           </div>
-
-          {/* Redirect / Test Link */}
-          {record.shortRedirectUrl && (
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-                Encoded Redirect Endpoint
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={record.shortRedirectUrl}
-                  className="w-full p-2.5 rounded-xl bg-navy-950 border border-slate-800 text-slate-300 font-mono text-xs"
-                />
-                <button
-                  onClick={handleCopyShortUrl}
-                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium shrink-0 flex items-center gap-1"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                <a
-                  href={record.shortRedirectUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-2.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-medium shrink-0 flex items-center gap-1"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* FOOTER ACTIONS */}
