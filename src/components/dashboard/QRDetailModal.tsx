@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { QRCodeRecord } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../common/Modal';
+import { QRThumbnail } from '../common/QRThumbnail';
 import {
   ExternalLink,
   Copy,
@@ -51,7 +52,6 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
         qrName,
         destinationUrl: destinationUrl,
         staticContent: destinationUrl,
-        shortRedirectUrl: destinationUrl,
         status,
       });
       onClose();
@@ -65,7 +65,7 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
   const handleCopyTargetUrl = () => {
     const target = destinationUrl || record.destinationUrl || record.staticContent;
     navigator.clipboard.writeText(target);
-    addToast('Copied exact target link to clipboard!', 'success');
+    addToast('Copied target link to clipboard!', 'success');
   };
 
   const handleViewAnalytics = () => {
@@ -132,87 +132,98 @@ export const QRDetailModal: React.FC<QRDetailModalProps> = ({
           </div>
         </div>
 
-        {/* EDITABLE FIELDS */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-              QR Name
-            </label>
-            <input
-              type="text"
-              value={qrName}
-              onChange={(e) => setQrName(e.target.value)}
-              className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-medium focus:outline-none focus:border-electric-500"
-            />
+        {/* TWO COLUMN CONTENT: QR PREVIEW + EDIT FIELDS */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          
+          {/* LEFT: LIVE VISUAL QR CODE PREVIEW */}
+          <div className="md:col-span-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-navy-950 light:bg-slate-100 border border-slate-800 light:border-slate-300">
+            <QRThumbnail record={record} size={160} />
+            <p className="text-[11px] text-slate-400 mt-2 font-medium">Visual QR Preview</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-              Exact Target URL / Encoded Content
-            </label>
-            <div className="flex items-center gap-2">
+          {/* RIGHT: EDITABLE FIELDS */}
+          <div className="md:col-span-8 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
+                QR Name
+              </label>
               <input
                 type="text"
-                value={destinationUrl}
-                onChange={(e) => setDestinationUrl(e.target.value)}
-                placeholder="https://yourwebsite.com"
-                className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-mono focus:outline-none focus:border-electric-500"
+                value={qrName}
+                onChange={(e) => setQrName(e.target.value)}
+                className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-medium focus:outline-none focus:border-electric-500"
               />
-              <button
-                onClick={handleCopyTargetUrl}
-                className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium shrink-0 flex items-center gap-1"
-                title="Copy URL"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-              {/^https?:\/\//i.test(destinationUrl) && (
-                <a
-                  href={destinationUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-3 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-medium shrink-0 flex items-center gap-1"
-                  title="Open Link"
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
+                Target URL / Destination
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={destinationUrl}
+                  onChange={(e) => setDestinationUrl(e.target.value)}
+                  placeholder="https://yourwebsite.com"
+                  className="w-full p-3 rounded-xl bg-navy-950 light:bg-slate-100 border border-slate-700 light:border-slate-300 text-white light:text-slate-900 text-sm font-mono focus:outline-none focus:border-electric-500"
+                />
+                <button
+                  onClick={handleCopyTargetUrl}
+                  className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium shrink-0 flex items-center gap-1"
+                  title="Copy URL"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
+                  <Copy className="w-4 h-4" />
+                </button>
+                {/^https?:\/\//i.test(destinationUrl) && (
+                  <a
+                    href={destinationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-medium shrink-0 flex items-center gap-1"
+                    title="Open Link"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Updating this URL changes where existing physical QR prints redirect to instantaneously.
+              </p>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Scanning this QR code with any camera will open this exact URL directly.
-            </p>
+
+            {/* Status Toggle */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
+                Campaign Status
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setStatus('active')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    status === 'active'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                      : 'bg-navy-950 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  <span>Active</span>
+                </button>
+
+                <button
+                  onClick={() => setStatus('paused')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    status === 'paused'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                      : 'bg-navy-950 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  <PauseCircle className="w-4 h-4" />
+                  <span>Paused</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Status Toggle */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-1.5">
-              Campaign Status
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setStatus('active')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                  status === 'active'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                    : 'bg-navy-950 text-slate-400 border-slate-800'
-                }`}
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span>Active</span>
-              </button>
-
-              <button
-                onClick={() => setStatus('paused')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                  status === 'paused'
-                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                    : 'bg-navy-950 text-slate-400 border-slate-800'
-                }`}
-              >
-                <PauseCircle className="w-4 h-4" />
-                <span>Paused</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* FOOTER ACTIONS */}

@@ -8,7 +8,7 @@
  * ----------------------------------------
  * - Stores QR records & destination URLs in 1 sheet: `QRCodes`
  * - NO detailed scan logging (no user-agent, IP, or visitor tracking).
- * - Target="_top" tap-enabled breakout UI (Bypasses Chrome sandbox restriction).
+ * - Instant automatic millisecond redirect (No prompts, no clicks required).
  * 
  * ⚠️ CRITICAL DEPLOYMENT STEP AFTER PASTING THIS CODE:
  * 1. Click Deploy > Manage Deployments in Google Apps Script.
@@ -232,7 +232,7 @@ function handleCreateQR(payload) {
   var sheet = getDb().getSheetByName("QRCodes");
   if (!sheet) return jsonResponse({ status: "error", message: "QRCodes sheet missing." }, 500);
 
-  var qrId = payload.id || "qr_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 7);
+  var qrId = payload.id || "q" + new Date().getTime().toString(36);
   var now = new Date().toISOString();
 
   var qrName = payload.qrName || "Untitled QR";
@@ -400,7 +400,7 @@ function handleDuplicateQR(payload) {
   if (!original) return jsonResponse({ status: "error", message: "Original QR not found." }, 404);
 
   var newPayload = Object.assign({}, original, {
-    id: "qr_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 7),
+    id: "q" + new Date().getTime().toString(36),
     qrName: (original.qrName || "QR") + " (Copy)",
     totalScans: 0,
     lastScanAt: ""
@@ -410,7 +410,7 @@ function handleDuplicateQR(payload) {
 }
 
 /**
- * ACTION: handleRedirect (TAP-ENABLED TARGET=_TOP BREAKOUT)
+ * ACTION: handleRedirect (INSTANT AUTOMATIC MILLISECOND REDIRECT - NO CLICK / NO PROMPT)
  */
 function handleRedirect(e) {
   var params = (e && e.parameter) ? e.parameter : {};
@@ -481,28 +481,21 @@ function handleRedirect(e) {
     sheet.getRange(rowIndex, 18).setValue(now);
   }
 
-  // PREPARATION OF TAP-ENABLED TARGET=_TOP REDIRECT HTML
+  // INSTANT MILLISECOND REDIRECT HTML (NO CLICK REQUIRED)
   var html = '<!DOCTYPE html><html><head>' +
     '<meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-    '<title>Opening Destination...</title>' +
-    '<style>' +
-    '  body { margin: 0; padding: 0; background: #0B0F19; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; cursor: pointer; }' +
-    '  .card { background: #111827; border: 1px solid #1F2937; padding: 32px 24px; border-radius: 24px; max-width: 360px; width: 88%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }' +
-    '  .btn { display: block; margin-top: 20px; padding: 16px 24px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 700; font-size: 16px; text-decoration: none; border-radius: 16px; box-shadow: 0 10px 20px rgba(37,99,235,0.4); }' +
-    '  .pulse { animation: pulse 2s infinite; }' +
-    '  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }' +
-    '</style>' +
-    '</head><body onclick="var b=document.getElementById(\'rd\'); if(b) b.click();">' +
-    '<div class="card">' +
-    '  <div style="font-size: 40px; margin-bottom: 12px;">🚀</div>' +
-    '  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800;">Redirecting to Link</h3>' +
-    '  <p style="margin: 0 0 16px 0; font-size: 13px; color: #9CA3AF; word-break: break-all;">' + encodeURI(finalDestination) + '</p>' +
-    '  <a id="rd" class="btn pulse" href="' + encodeURI(finalDestination) + '" target="_top">Tap to Open Destination ↗</a>' +
-    '</div>' +
+    '<meta http-equiv="refresh" content="0;url=' + encodeURI(finalDestination) + '">' +
     '<script>' +
-    'setTimeout(function(){ var b=document.getElementById("rd"); if(b) b.click(); }, 150);' +
+    '  var target = ' + JSON.stringify(finalDestination) + ';' +
+    '  try {' +
+    '    if (window.top && window.top !== window) { window.top.location.href = target; }' +
+    '    else { window.location.href = target; }' +
+    '  } catch(e) {' +
+    '    window.location.href = target;' +
+    '  }' +
     '</script>' +
+    '</head><body style="background:#0B0F19;color:#fff;margin:0;padding:0;">' +
+    '<script>window.location.href = ' + JSON.stringify(finalDestination) + ';</script>' +
     '</body></html>';
 
   return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);

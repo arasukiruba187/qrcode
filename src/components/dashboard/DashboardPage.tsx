@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { QRCodeRecord, QRType, QRStatus, QRContentType } from '../../types';
 import { QRDetailModal } from './QRDetailModal';
+import { QRThumbnail } from '../common/QRThumbnail';
 import QRCodeStyling from 'qr-code-styling';
 import jsPDF from 'jspdf';
 import {
@@ -61,28 +62,31 @@ export const DashboardPage: React.FC = () => {
       : (record.staticContent || record.destinationUrl || 'https://qrstudio.app');
 
     const qr = new QRCodeStyling({
-      width: 400,
-      height: 400,
+      width: 320,
+      height: 320,
       data: exactContent,
-      margin: record.customizationJson?.margin || 10,
-      dotsOptions: { color: record.customizationJson?.dotsColor || '#000', type: record.customizationJson?.dotsStyle || 'square' },
-      backgroundOptions: { color: record.customizationJson?.bgColor || '#fff' },
+      margin: record.customizationJson?.margin || 6,
+      qrOptions: {
+        errorCorrectionLevel: record.customizationJson?.errorCorrectionLevel || 'L'
+      },
+      dotsOptions: { color: record.customizationJson?.dotsColor || '#0F172A', type: record.customizationJson?.dotsStyle || 'square' },
+      backgroundOptions: { color: record.customizationJson?.bgColor || '#ffffff' },
       cornersSquareOptions: {
-        color: record.customizationJson?.cornerSquareColor || record.customizationJson?.dotsColor || '#000000',
+        color: record.customizationJson?.cornerSquareColor || record.customizationJson?.dotsColor || '#0F172A',
         type: record.customizationJson?.cornerSquareStyle || 'square',
       },
       cornersDotOptions: {
-        color: record.customizationJson?.cornerDotColor || record.customizationJson?.cornerSquareColor || '#000000',
+        color: record.customizationJson?.cornerDotColor || record.customizationJson?.cornerSquareColor || '#0F172A',
         type: record.customizationJson?.cornerDotStyle || 'square',
       },
       image: record.customizationJson?.logoUrl || undefined,
       imageOptions: {
         imageSize: record.customizationJson?.logoSizeRatio || 0.2,
-        margin: 4,
+        margin: 2,
       }
     });
     qr.download({ name: `${record.qrName.replace(/[^a-z0-9]/gi, '_')}_qr`, extension: 'png' });
-    addToast('Downloaded QR Code', 'success');
+    addToast('Downloaded minimal clean QR code', 'success');
   };
 
   const handleGoToAnalytics = (record: QRCodeRecord, e: React.MouseEvent) => {
@@ -126,7 +130,7 @@ export const DashboardPage: React.FC = () => {
             Campaign Dashboard
           </h1>
           <p className="text-sm text-slate-400 light:text-slate-600 mt-1">
-            Edit target links for existing QR codes without re-printing the QR image.
+            Preview, manage, and edit target links for your simple minimal QR codes.
           </p>
         </div>
 
@@ -253,6 +257,11 @@ export const DashboardPage: React.FC = () => {
                   </span>
                 </div>
 
+                {/* LIVE QR CODE PREVIEW THUMBNAIL */}
+                <div className="flex items-center justify-center p-3 rounded-2xl bg-navy-950 light:bg-slate-100 border border-slate-800/80 light:border-slate-200">
+                  <QRThumbnail record={r} size={140} />
+                </div>
+
                 {/* DESTINATION PREVIEW */}
                 <div className="p-3 rounded-xl bg-navy-950 light:bg-slate-50 border border-slate-800/80 light:border-slate-200 space-y-1">
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Current Target URL</span>
@@ -282,7 +291,7 @@ export const DashboardPage: React.FC = () => {
                     <button
                       onClick={(e) => handleQuickDownloadPNG(r, e)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                      title="Download Permanent QR Code"
+                      title="Download PNG QR Code"
                     >
                       <Download className="w-4 h-4" />
                     </button>

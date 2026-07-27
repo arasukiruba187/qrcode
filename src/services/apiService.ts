@@ -1,72 +1,60 @@
-import { QRCodeRecord, AnalyticsSummary, ScanLog } from '../types';
-import {
-  DEFAULT_APPS_SCRIPT_URL_KEY,
-  DEFAULT_LOCAL_STORAGE_KEY,
-  DEFAULT_FALLBACK_APPS_SCRIPT_URL,
-  MOCK_QR_RECORDS
-} from '../config/appConfig';
+import { QRCodeRecord } from '../types';
+import { DEFAULT_FALLBACK_APPS_SCRIPT_URL, DEFAULT_APPS_SCRIPT_URL_KEY, DEFAULT_LOCAL_STORAGE_KEY } from '../config/appConfig';
 
 /**
- * Get current Google Apps Script Web App URL (reads from localStorage or env variable fallback)
+ * Helper to get currently configured Apps Script Web App URL
  */
 export function getAppsScriptUrl(): string {
-  return localStorage.getItem(DEFAULT_APPS_SCRIPT_URL_KEY) || DEFAULT_FALLBACK_APPS_SCRIPT_URL || '';
-}
-
-/**
- * Save Google Apps Script Web App URL to localStorage
- */
-export function saveAppsScriptUrl(url: string): void {
-  localStorage.setItem(DEFAULT_APPS_SCRIPT_URL_KEY, url.trim());
-}
-
-/**
- * Helper to get or generate anonymous visitor ID for unique analytics tracking
- */
-export function getVisitorId(): string {
-  let vid = localStorage.getItem('qr_studio_visitor_id');
-  if (!vid) {
-    vid = 'v_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-    localStorage.setItem('qr_studio_visitor_id', vid);
+  const customUrl = localStorage.getItem(DEFAULT_APPS_SCRIPT_URL_KEY);
+  if (customUrl && customUrl.trim() !== '') {
+    return customUrl.trim();
   }
-  return vid;
+  return DEFAULT_FALLBACK_APPS_SCRIPT_URL;
 }
 
 /**
- * Read local storage cache records
+ * Helper to set Apps Script Web App URL
  */
-function getLocalRecords(): QRCodeRecord[] {
+export function setAppsScriptUrl(url?: string): void {
+  if (url && url.trim() !== '') {
+    localStorage.setItem(DEFAULT_APPS_SCRIPT_URL_KEY, url.trim());
+  } else {
+    localStorage.removeItem(DEFAULT_APPS_SCRIPT_URL_KEY);
+  }
+}
+
+export const saveAppsScriptUrl = setAppsScriptUrl;
+
+/**
+ * Local Storage Fallback Cache Management
+ */
+export function getLocalRecords(): QRCodeRecord[] {
   try {
     const raw = localStorage.getItem(DEFAULT_LOCAL_STORAGE_KEY);
     if (raw) {
       return JSON.parse(raw);
     }
   } catch (e) {
-    console.error('Error reading local QR storage', e);
+    console.error('Error reading local QR records:', e);
   }
-  // Initialize with mock records if empty
-  localStorage.setItem(DEFAULT_LOCAL_STORAGE_KEY, JSON.stringify(MOCK_QR_RECORDS));
-  return MOCK_QR_RECORDS;
+  return [];
 }
 
-/**
- * Save records to local storage cache
- */
-function saveLocalRecords(records: QRCodeRecord[]): void {
+export function saveLocalRecords(records: QRCodeRecord[]): void {
   try {
     localStorage.setItem(DEFAULT_LOCAL_STORAGE_KEY, JSON.stringify(records));
   } catch (e) {
-    console.error('Error saving local QR storage', e);
+    console.error('Error saving local QR records:', e);
   }
 }
 
 /**
- * Test health status of Google Apps Script Web App
+ * Check Backend Health
  */
 export async function checkAppsScriptHealth(url?: string): Promise<{ success: boolean; message: string }> {
   const targetUrl = url || getAppsScriptUrl();
   if (!targetUrl) {
-    return { success: false, message: 'Google Apps Script URL is not configured. Running in local mock mode.' };
+    return { success: false, message: 'Google Apps Script Web App URL is not configured.' };
   }
 
   try {
@@ -74,17 +62,19 @@ export async function checkAppsScriptHealth(url?: string): Promise<{ success: bo
     if (res.ok) {
       const data = await res.json();
       if (data && data.status === 'ok') {
-        return { success: true, message: 'Successfully connected to Google Apps Script API!' };
+        return { success: true, message: 'Connected to Google Apps Script Web App successfully!' };
       }
     }
-    return { success: false, message: 'API returned unexpected status. Verify your Apps Script Web App deployment settings.' };
-  } catch (err) {
-    return { success: false, message: 'Network request failed. Ensure deployment is set to "Anyone" and CORS is accessible.' };
+    return { success: false, message: `Server responded with status ${res.status}.` };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Network request failed.' };
   }
 }
 
+export const checkBackendHealth = checkAppsScriptHealth;
+
 /**
- * Fetch all QR codes (Apps Script with Local Fallback)
+ * Fetch all QR records
  */
 export async function fetchQRCodes(): Promise<QRCodeRecord[]> {
   const scriptUrl = getAppsScriptUrl();
@@ -97,14 +87,13 @@ export async function fetchQRCodes(): Promise<QRCodeRecord[]> {
     if (res.ok) {
       const result = await res.json();
       if (result && result.status === 'success' && Array.isArray(result.data)) {
-        // Parse customizationJson if needed
         const parsed: QRCodeRecord[] = result.data.map((item: any) => ({
           ...item,
           tags: typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : (item.tags || []),
           customizationJson: typeof item.customizationJson === 'string' ? JSON.parse(item.customizationJson) : item.customizationJson,
           totalScans: Number(item.totalScans || 0)
         }));
-        saveLocalRecords(parsed); // Sync local cache
+        saveLocalRecords(parsed);
         return parsed;
       }
     }
@@ -116,10 +105,29 @@ export async function fetchQRCodes(): Promise<QRCodeRecord[]> {
 }
 
 /**
- * Create a new QR Code record
+ * Fetch Analytics overview
+ */
+export async function fetchAnalytics(qrId?: string): Promise<any> {
+  const records = getLocalRecords();
+  const targetRecords = qrId ? records.filter(r => r.id === qrId) : records;
+  const totalScans = targetRecords.reduce((acc, r) => acc + (r.totalScans || 0), 0);
+
+  return {
+    totalScans,
+    uniqueVisitors: totalScans,
+    scansByDate: {},
+    devices: {},
+    browsers: {},
+    operatingSystems: {},
+    recentLogs: []
+  };
+}
+
+/**
+ * Create a new QR Code record with compact ID for simple boxes/lines
  */
 export async function createQRCode(record: Omit<QRCodeRecord, 'id' | 'createdAt' | 'updatedAt' | 'totalScans'>): Promise<QRCodeRecord> {
-  const newId = 'qr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const newId = 'q' + Date.now().toString(36);
   const now = new Date().toISOString();
   const scriptUrl = getAppsScriptUrl();
 
@@ -137,32 +145,27 @@ export async function createQRCode(record: Omit<QRCodeRecord, 'id' | 'createdAt'
     createdBy: record.createdBy || 'Arasukirubanandhan'
   };
 
-  // 1. Try Apps Script API
+  // Try Apps Script API
   if (scriptUrl) {
     try {
-      const res = await fetch(scriptUrl, {
+      const payload = {
+        action: 'createQR',
+        ...fullRecord
+      };
+      await fetch(scriptUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'createQR',
-          ...fullRecord,
-          customizationJson: fullRecord.customizationJson
-        })
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'success') {
-          console.log('Created successfully in Google Sheets');
-        }
-      }
     } catch (err) {
-      console.warn('Google Sheets create failed, saved in local storage', err);
+      console.warn('Apps Script create call failed, saving to local cache', err);
     }
   }
 
-  // 2. Always update local storage
-  const current = getLocalRecords();
-  const updated = [fullRecord, ...current];
+  // Update Local Cache
+  const existing = getLocalRecords();
+  const updated = [fullRecord, ...existing];
   saveLocalRecords(updated);
 
   return fullRecord;
@@ -172,38 +175,40 @@ export async function createQRCode(record: Omit<QRCodeRecord, 'id' | 'createdAt'
  * Update an existing QR Code record
  */
 export async function updateQRCode(id: string, updates: Partial<QRCodeRecord>): Promise<QRCodeRecord> {
-  const current = getLocalRecords();
-  const index = current.findIndex(r => r.id === id);
+  const existing = getLocalRecords();
+  const index = existing.findIndex(r => r.id === id);
   if (index === -1) {
-    throw new Error('QR Record not found');
+    throw new Error('Record not found');
   }
 
   const updatedRecord: QRCodeRecord = {
-    ...current[index],
+    ...existing[index],
     ...updates,
     updatedAt: new Date().toISOString()
   };
 
+  existing[index] = updatedRecord;
+  saveLocalRecords(existing);
+
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
     try {
+      const payload = {
+        action: 'updateQR',
+        id,
+        ...updates
+      };
       await fetch(scriptUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'updateQR',
-          id: id,
-          ...updates,
-          customizationJson: updates.customizationJson
-        })
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
     } catch (err) {
-      console.warn('Apps script update failed, synced locally', err);
+      console.warn('Apps Script update call failed', err);
     }
   }
 
-  current[index] = updatedRecord;
-  saveLocalRecords(current);
   return updatedRecord;
 }
 
@@ -211,23 +216,25 @@ export async function updateQRCode(id: string, updates: Partial<QRCodeRecord>): 
  * Delete a QR Code record
  */
 export async function deleteQRCode(id: string): Promise<boolean> {
-  const current = getLocalRecords();
-  const updated = current.filter(r => r.id !== id);
+  const existing = getLocalRecords();
+  const filtered = existing.filter(r => r.id !== id);
+  saveLocalRecords(filtered);
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
     try {
+      const payload = { action: 'deleteQR', id };
       await fetch(scriptUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteQR', id })
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
     } catch (err) {
-      console.warn('Apps Script delete failed', err);
+      console.warn('Apps Script delete call failed', err);
     }
   }
 
-  saveLocalRecords(updated);
   return true;
 }
 
@@ -235,77 +242,27 @@ export async function deleteQRCode(id: string): Promise<boolean> {
  * Duplicate a QR Code record
  */
 export async function duplicateQRCode(id: string): Promise<QRCodeRecord> {
-  const current = getLocalRecords();
-  const target = current.find(r => r.id === id);
-  if (!target) throw new Error('Target QR code not found');
+  const existing = getLocalRecords();
+  const target = existing.find(r => r.id === id);
+  if (!target) {
+    throw new Error('Original record not found for duplication');
+  }
 
-  const newPayload: Omit<QRCodeRecord, 'id' | 'createdAt' | 'updatedAt' | 'totalScans'> = {
-    ...target,
+  const copyPayload: Omit<QRCodeRecord, 'id' | 'createdAt' | 'updatedAt' | 'totalScans'> = {
     qrName: `${target.qrName} (Copy)`,
-    tags: [...target.tags]
+    qrType: target.qrType,
+    contentType: target.contentType,
+    staticContent: target.staticContent,
+    destinationUrl: target.destinationUrl,
+    shortRedirectUrl: '',
+    status: target.status,
+    expiresAt: target.expiresAt,
+    scanLimit: target.scanLimit,
+    campaign: target.campaign,
+    tags: target.tags ? [...target.tags] : [],
+    customizationJson: { ...target.customizationJson },
+    createdBy: 'Arasukirubanandhan'
   };
 
-  return createQRCode(newPayload);
-}
-
-/**
- * Fetch Analytics Summary
- */
-export async function fetchAnalytics(qrId?: string): Promise<AnalyticsSummary> {
-  const scriptUrl = getAppsScriptUrl();
-  if (scriptUrl) {
-    try {
-      const url = qrId ? `${scriptUrl}?action=getAnalytics&id=${qrId}` : `${scriptUrl}?action=getAnalytics`;
-      const res = await fetch(url, { method: 'GET', mode: 'cors' });
-      if (res.ok) {
-        const result = await res.json();
-        if (result && result.status === 'success' && result.data) {
-          return result.data;
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to fetch live analytics from Apps Script, using mock generator', err);
-    }
-  }
-
-  // Fallback Mock Analytics Generator
-  const records = getLocalRecords();
-  const targetQR = qrId ? records.find(r => r.id === qrId) : null;
-  const totalScans = targetQR ? targetQR.totalScans : records.reduce((acc, r) => acc + r.totalScans, 0);
-
-  // Generate synthetic mock log timeline
-  const scansByDate: Record<string, number> = {};
-  const today = new Date();
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateKey = d.toISOString().substring(0, 10);
-    scansByDate[dateKey] = Math.floor(Math.random() * (totalScans / 10 + 5));
-  }
-
-  const mockLogs: ScanLog[] = Array.from({ length: Math.min(totalScans, 25) }).map((_, idx) => ({
-    scanId: `scan_mock_${idx}`,
-    qrId: qrId || (records[idx % records.length]?.id || 'qr_demo_001'),
-    timestamp: new Date(Date.now() - idx * 3600000 * 4).toISOString(),
-    visitorId: `visitor_${Math.floor(Math.random() * 50)}`,
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-    deviceType: idx % 3 === 0 ? 'Desktop' : (idx % 2 === 0 ? 'Mobile' : 'Tablet'),
-    browser: idx % 2 === 0 ? 'Safari' : 'Chrome',
-    operatingSystem: idx % 2 === 0 ? 'iOS' : 'Android',
-    referrer: idx % 4 === 0 ? 'https://google.com' : (idx % 3 === 0 ? 'Direct Scan' : 'https://t.co'),
-    language: 'en-US',
-    country: 'United States',
-    redirectUrl: targetQR?.destinationUrl || 'https://qrstudio.app'
-  }));
-
-  return {
-    qrId: qrId || 'all',
-    totalScans: totalScans,
-    uniqueVisitors: Math.max(1, Math.round(totalScans * 0.72)),
-    scansByDate,
-    devices: { Mobile: Math.round(totalScans * 0.65), Desktop: Math.round(totalScans * 0.25), Tablet: Math.round(totalScans * 0.10) },
-    browsers: { Chrome: Math.round(totalScans * 0.45), Safari: Math.round(totalScans * 0.40), Firefox: Math.round(totalScans * 0.10), Other: Math.round(totalScans * 0.05) },
-    operatingSystems: { iOS: Math.round(totalScans * 0.50), Android: Math.round(totalScans * 0.35), macOS: Math.round(totalScans * 0.10), Windows: Math.round(totalScans * 0.05) },
-    recentLogs: mockLogs
-  };
+  return createQRCode(copyPayload);
 }
