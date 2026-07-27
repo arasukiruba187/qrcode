@@ -124,10 +124,11 @@ export async function fetchAnalytics(qrId?: string): Promise<any> {
 }
 
 /**
- * Create a new QR Code record with compact ID for simple boxes/lines
+ * Create a new QR Code record with ultra-compact ID for simple minimal 21x21 QR grid
  */
 export async function createQRCode(record: Omit<QRCodeRecord, 'id' | 'createdAt' | 'updatedAt' | 'totalScans'>): Promise<QRCodeRecord> {
-  const newId = 'q' + Date.now().toString(36);
+  // 5-character ultra short ID to keep QR code matrix minimal and clean
+  const newId = 'q' + Date.now().toString(36).slice(-4);
   const now = new Date().toISOString();
   const scriptUrl = getAppsScriptUrl();
 
